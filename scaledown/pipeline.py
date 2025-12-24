@@ -1,7 +1,7 @@
 from typing import List, Tuple, Union, Optional
-from .optimizer.base import BaseOptimizer
-from .compressor.base import BaseCompressor
-from .types import OptimizedContext, CompressedPrompt
+from scaledown.optimizer.base import BaseOptimizer
+from scaledown.compressor.base import BaseCompressor
+from scaledown.types import OptimizedContext, CompressedPrompt
 
 
 class Pipeline:

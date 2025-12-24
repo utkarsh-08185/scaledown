@@ -1,9 +1,9 @@
 import os
 from typing import Optional
 
-from .compressor import ScaleDownCompressor
-from .optimizer import HasteOptimizer
-from .pipeline import Pipeline, make_pipeline
+from scaledown.compressor import ScaleDownCompressor
+from scaledown.optimizer import HasteOptimizer
+from scaledown.pipeline import Pipeline, make_pipeline
 
 # Global configuration state
 _API_KEY: Optional[str] = os.environ.get("SCALEDOWN_API_KEY")
@@ -26,6 +26,4 @@ __all__ = [
     "Pipeline",
     "make_pipeline",
     "set_api_key",
-    "get_api_key"
-]
-
+    "get_api_key"]

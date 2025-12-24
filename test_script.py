@@ -1,19 +1,34 @@
 """
-Real HASTE integration test - NO MOCKS!
-Tests the actual HasteContext library integration.
+Full ScaleDown Pipeline Integration Test (REAL API)
+Tests HASTE Optimizer + ScaleDown Compressor chain with actual network calls.
 """
+import os
+import tempfile
+import sys
 import scaledown as sd
 from scaledown.optimizer import HasteOptimizer
+from scaledown.compressor import ScaleDownCompressor
 from scaledown.pipeline import Pipeline
-import tempfile
-import os
+from scaledown.types import CompressedPrompt
+from scaledown.exceptions import AuthenticationError, APIError
 
-print("=" * 70)
-print("REAL HASTE INTEGRATION TEST")
-print("=" * 70)
+# -------------------------------------------------------------------------
+# 🔑 CONFIGURATION
+# -------------------------------------------------------------------------
+# REPLACE THIS WITH YOUR ACTUAL API KEY
+API_KEY = os.environ.get("SCALEDOWN_API_KEY", "yVlJ8qWWVF6wj8RZUfNHm7fUYqNBVEFr3Rrfep67")
 
-# Create a test Python file
-test_code = """
+if API_KEY == "YOUR_REAL_API_KEY_HERE":
+    print("⚠️  WARNING: Using placeholder API key. The API call will likely fail.")
+    print("   Export your key: export SCALEDOWN_API_KEY='sk_...'\n")
+
+# Set the API key globally
+sd.set_api_key(API_KEY)
+
+# -------------------------------------------------------------------------
+# Test Setup
+# -------------------------------------------------------------------------
+TEST_CODE = """
 def calculate_sum(numbers):
     \"\"\"Calculate sum of numbers.\"\"\"
     total = 0
@@ -27,114 +42,88 @@ def calculate_average(numbers):
         return 0
     return calculate_sum(numbers) / len(numbers)
 
-def calculate_median(numbers):
-    \"\"\"Calculate median of numbers.\"\"\"
-    sorted_nums = sorted(numbers)
-    n = len(sorted_nums)
-    if n % 2 == 0:
-        return (sorted_nums[n//2-1] + sorted_nums[n//2]) / 2
-    return sorted_nums[n//2]
-
-def calculate_variance(numbers):
-    \"\"\"Calculate variance of numbers.\"\"\"
-    avg = calculate_average(numbers)
-    squared_diffs = [(x - avg) ** 2 for x in numbers]
-    return sum(squared_diffs) / len(numbers)
-
-def process_data(data):
-    \"\"\"Process and analyze data.\"\"\"
-    cleaned = [x for x in data if x is not None]
-    return {
-        'sum': calculate_sum(cleaned),
-        'average': calculate_average(cleaned),
-        'median': calculate_median(cleaned),
-        'variance': calculate_variance(cleaned)
-    }
-
 class DataProcessor:
-    \"\"\"Data processing class.\"\"\"
-    
     def __init__(self, data):
         self.data = data
     
     def process(self):
-        return process_data(self.data)
-    
-    def get_statistics(self):
-        stats = self.process()
-        return {
-            'mean': stats['average'],
-            'median': stats['median'],
-            'var': stats['variance']
-        }
+        return calculate_average(self.data)
 """
 
-# Write test code to temp file
-with tempfile.NamedTemporaryFile(
-    mode='w',
-    suffix='.py',
-    delete=False,
-    encoding='utf-8'
-) as f:
-    f.write(test_code)
-    test_file_path = f.name
+print("=" * 70)
+print("SCALEDOWN PIPELINE REAL API TEST")
+print("=" * 70)
+
+with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
+    f.write(TEST_CODE)
+    TEST_FILE_PATH = f.name
 
 try:
-    # Test 1: Basic HASTE optimization with BM25 only
-    print("\n1. Testing HASTE Optimizer (BM25 only)")
-    print("-" * 70)
+    # -------------------------------------------------------------------------
+    # 1. Initialize Components
+    # -------------------------------------------------------------------------
+    print("\n1. Initializing Pipeline...")
     
     optimizer = HasteOptimizer(
-        top_k=3,
-        bfs_depth=1,
-        semantic=False  # No OpenAI API needed!
+        top_k=2,
+        semantic=False  # Local BM25 only for speed
     )
     
-    result = optimizer.optimize(
-        context=test_code,
-        query="Show me the calculate_average function and its dependencies",
-        file_path=test_file_path,
-        max_tokens=500
+    compressor = ScaleDownCompressor(
+        target_model="gpt-4o",
+        rate="auto"
     )
     
-    print("\n✓ Optimized Context:")
-    print(result.content[:300] + "..." if len(result.content) > 300 else result.content)
-    print("\n✓ Optimization Metrics:")
-    result.print_stats()
+    pipe = Pipeline([
+        ('haste', optimizer),
+        ('compressor', compressor)
+    ])
+    print(" Pipeline created successfully")
+
+    # -------------------------------------------------------------------------
+    # 2. Run Pipeline (REAL NETWORK CALL)
+    # -------------------------------------------------------------------------
+    print(f"\n2. Calling API (Key: {API_KEY[:4]}...{API_KEY[-4:] if len(API_KEY)>8 else ''})...")
     
-    # Test 2: String-based optimization
-    print("\n\n2. Testing String-Based Optimization")
-    print("-" * 70)
-    
-    result2 = optimizer.optimize_from_string(
-        source_code=test_code,
-        query="Find the DataProcessor class",
-        max_tokens=400
+    result = pipe.run(
+        context=TEST_CODE,
+        query="calculate_average function",
+        file_path=TEST_FILE_PATH,
+        prompt="Summarize this function"
     )
     
-    print("\n✓ Optimized Context:")
-    print(result2.content[:300] + "..." if len(result2.content) > 300 else result2.content)
-    print("\n✓ Metrics:")
-    result2.print_stats()
+    print(" API call successful!")
     
-    # Test 3: Different query
-    print("\n\n3. Testing Different Query")
-    print("-" * 70)
-    
-    result3 = optimizer.optimize(
-        context=test_code,
-        query="variance calculation",
-        file_path=test_file_path
-    )
-    
-    print("\n✓ Retrieved Functions:")
-    print(result3.content[:400] + "..." if len(result3.content) > 400 else result3.content)
-    
-    print("\n" + "=" * 70)
-    print("✅ ALL TESTS PASSED - HASTE IS WORKING!")
-    print("=" * 70)
-    
+    if isinstance(result, CompressedPrompt):
+        print(" Result is a CompressedPrompt object")
+
+    # -------------------------------------------------------------------------
+    # 3. Results
+    # -------------------------------------------------------------------------
+    print("\n3. Results:")
+    print("-" * 30)
+    print(f"Original Context Size:  {len(TEST_CODE)} chars")
+    print(f"Compressed Output:      {result.content}")
+    print(f"Tokens Used:            {result.tokens[0]} -> {result.tokens[1]}")
+    print(f"Savings:                {result.savings_percent:.1f}%")
+    print(f"Latency:                {result.latency}ms")
+    print("-" * 30)
+
+    print("\nREAL API TEST PASSED!")
+
+except AuthenticationError:
+    print("\nAUTHENTICATION FAILED: Invalid API Key.")
+    print("   Please check your SCALEDOWN_API_KEY environment variable.")
+
+except APIError as e:
+    print(f"\n API ERROR: {str(e)}")
+    print("   The server might be down or unreachable.")
+
+except Exception as e:
+    print(f"\nUNEXPECTED ERROR: {str(e)}")
+    import traceback
+    traceback.print_exc()
+
 finally:
-    # Cleanup
-    if os.path.exists(test_file_path):
-        os.unlink(test_file_path)
+    if os.path.exists(TEST_FILE_PATH):
+        os.unlink(TEST_FILE_PATH)
