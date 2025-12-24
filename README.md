@@ -35,14 +35,14 @@ pip install scaledown
   Defaults to:
 
 ```
-https://api.scaledown.ai/v1/compress
+https://api.scaledown.xyz/compress/raw
 ```
 
 Example:
 
 ```bash
 export SCALEDOWN_API_KEY="sk-your-key"
-export SCALEDOWN_API_URL="https://api.scaledown.ai/v1/compress"
+export SCALEDOWN_API_URL="your-api-url"
 ```
 
 ---
@@ -168,17 +168,22 @@ The package defines custom exceptions:
 Example:
 
 ```python
-from scaledown.compressor.scaledown_compressor import ScaleDownCompressor
-from scaledown.exceptions import AuthenticationError, APIError
-
-compressor = ScaleDownCompressor(rate="auto")
+from scaledown import Pipeline
+from scaledown.exceptions import AuthenticationError, OptimizerError, APIError
 
 try:
-    result = compressor.compress("context", "prompt")
-except AuthenticationError as e:
-    print("Authentication failed:", e)
+    pipe = Pipeline([...])
+    result = pipe.run(query="fix bug", file_path="app.py", prompt="Analyze this")
+    
+except AuthenticationError:
+    print("Invalid or missing API Key.")
+except OptimizerError as e:
+    print(f"HASTE Optimization failed: {e}")
 except APIError as e:
-    print("API call failed:", e)
+    print(f"Compression API failed: {e}")
+except Exception as e:
+    print(f"Unexpected error: {e}")
+
 ```
 
 ---
@@ -212,17 +217,30 @@ The tests mock HTTP calls so they do not hit the real ScaleDown API.
 
 ```
 scaledown/
-    __init__.py
-    compressor/
+    __init__.py           # Top-level exports (set_api_key, etc.)
+    types.py              # Data classes (PipelineResult, OptimizedContext)
+    exceptions.py         # Custom exceptions
+    
+    pipeline/             # Pipeline orchestration
         __init__.py
-        base.py
-        config.py
-        scaledown_compressor.py
-    exceptions.py
-    types.py
-tests/
+        pipeline.py       # Pipeline class logic
+        
+    optimizer/            # Context Selection (Local)
+        __init__.py
+        base.py           # BaseOptimizer interface
+        haste.py          # HasteOptimizer implementation
+        
+    compressor/           # Context Compression (Remote)
+        __init__.py
+        base.py           # BaseCompressor interface
+        scaledown_compressor.py  # ScaleDown API client
+        config.py         # API configuration
+        
+tests/                    # Pytest suite
+    test_pipeline.py
+    test_haste.py
+    test_compressor.py
     test_config.py
-    test_scaledown_compressor.py
 ```
 
 ---
