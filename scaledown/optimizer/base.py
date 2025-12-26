@@ -8,7 +8,7 @@ class BaseOptimizer(ABC):
     Optimizers process raw context before compression.
     """
     
-    def __init__(self, api_key: Optional[str] = None, **kwargs):
+    def __init__(self, api_key: Optional[str] = None, target_model:str="gpt-4o", **kwargs):
         """
         Initialize optimizer.
         
@@ -20,6 +20,7 @@ class BaseOptimizer(ABC):
             Additional optimizer-specific parameters
         """
         self.api_key = api_key or scaledown.get_api_key()
+        self.target_model = target_model
         self.config = kwargs
     
     @abstractmethod

@@ -1,22 +1,19 @@
 import os
 import tempfile
-import sys
+import time
 import scaledown as sd
-from scaledown.optimizer import HasteOptimizer
-from scaledown.compressor import ScaleDownCompressor
-from scaledown.pipeline import Pipeline
-from scaledown.types import PipelineResult
+
+# Optional Optimizers (Lazy Loaded)
+from scaledown.optimizer import HasteOptimizer, SemanticOptimizer
 from scaledown.exceptions import AuthenticationError, APIError
 
-API_KEY = os.environ.get("SCALEDOWN_API_KEY", "your api key")
 
-if API_KEY == "your api key":
-    print(" WARNING: Using placeholder API key. The API call will likely fail.")
-    print("Export your key: export SCALEDOWN_API_KEY='sk_...'\n")
-
-# Set the API key globally
+API_KEY = os.environ.get("SCALEDOWN_API_KEY", "yVlJ8qWWVF6wj8RZUfNHm7fUYqNBVEFr3Rrfep67")
 sd.set_api_key(API_KEY)
 
+if API_KEY == "your_api_key_here":
+    print("Warning: Using placeholder API key. API calls will fail.")
+    print("Export your key: export SCALEDOWN_API_KEY='sk_...'\n")
 
 TEST_CODE = """
 def calculate_sum(numbers):
@@ -40,118 +37,119 @@ class DataProcessor:
         return calculate_average(self.data)
 """
 
-print("=" * 70)
-print("SCALEDOWN PIPELINE REAL API TEST")
-print("=" * 70)
+def print_header(title):
+    print("\n" + "-" * 60)
+    print(f"{title}")
+    print("-" * 60)
 
-# Helper to handle potential string input for HASTE
-temp_file = None
-file_path_arg = None
+def print_step_details(step_name, content, metrics):
+    print(f"\n[{step_name}]")
+    
+    # Handle different metric structures safely
+    in_tok = metrics.get('original_tokens', metrics.get('input_tokens', '?'))
+    out_tok = metrics.get('optimized_tokens', metrics.get('compressed_tokens', metrics.get('output_tokens', '?')))
+    
+    print(f"Tokens: {in_tok} -> {out_tok}")
+    
+    if 'latency_ms' in metrics:
+        print(f"Latency: {metrics['latency_ms']:.0f}ms")
+    
+    preview = content.strip()[:150].replace('\n', ' ')
+    print(f"Preview: {preview}{'...' if len(content) > 150 else ''}")
 
+# main test logic
 with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False, encoding='utf-8') as f:
     f.write(TEST_CODE)
     file_path_arg = f.name
-    temp_file = f.name
 
 try:
-    # 1. Initialize Components
-    print("\n1. Initializing Pipeline...")
-    
-    optimizer = HasteOptimizer(
-        top_k=2,
-        semantic=False
-    )
-    
-    compressor = ScaleDownCompressor(
-        target_model="gpt-4o",
-        rate="auto"
-    )
-    
-    pipe = Pipeline([
-        ('haste', optimizer),
-        ('compressor', compressor)
-    ])
-    print(" Pipeline created successfully")
+    print_header("Component tests")
 
-    # 2. Run Pipeline (REAL NETWORK CALL)
-    print(f"\n2. Calling API (Key: {API_KEY[:4]}...{API_KEY[-4:] if len(API_KEY)>8 else ''})...")
+    # 1. test semantic
+    print("\nTesting SemanticOptimizer...", end=" ")
+    try:
+        opt = SemanticOptimizer(top_k=1)
+        res = opt.optimize(context=TEST_CODE, query="DataProcessor", file_path=file_path_arg)
+        print("Passed")
+        
+        metrics_dict = res.metrics.__dict__ if hasattr(res.metrics, '__dict__') else {}
+        print_step_details("Semantic output", res.content, metrics_dict)
+    except ImportError:
+        print("Skipped (missing dependencies)")
+    except Exception as e:
+        print(f"Failed: {e}")
+
+    # 2. test haste
+    print("\nTesting HasteOptimizer...", end=" ")
+    try:
+        opt = HasteOptimizer(top_k=2)
+        res = opt.optimize(context=TEST_CODE, query="calculate_average", file_path=file_path_arg, target_model="gpt-4o")
+        print("Passed")
+        
+        metrics_dict = res.metrics.__dict__ if hasattr(res.metrics, '__dict__') else {}
+        print_step_details("Haste output", res.content, metrics_dict)
+    except ImportError:
+         print("Skipped (missing dependencies)")
+    except Exception as e:
+        print(f"Failed: {e}")
+
+    # 3. test compressor
+    print("\nTesting ScaleDownCompressor...", end=" ")
+    try:
+        comp = sd.ScaleDownCompressor(target_model="gpt-4o")
+        res = comp.compress(context=TEST_CODE, prompt="Summarize")
+        print("Passed")
+        
+        metrics_dict = {
+            "original_tokens": res.tokens[0], 
+            "compressed_tokens": res.tokens[1],
+            "latency_ms": 0 
+        }
+        print_step_details("Compressor output", res.content, metrics_dict)
+    except Exception as e:
+        print(f"Failed: {e}")
+
+    # 4. full pipeline
+    print_header("Pipeline integration")
     
-    query_str = "calculate_average function"
-    prompt_str = "Summarize this function"
+    steps = []
+    try:
+        steps.append(('haste', HasteOptimizer(top_k=5)))
+    except ImportError: pass
     
-    result = pipe.run(
+    try:
+        steps.append(('semantic', SemanticOptimizer(top_k=1)))
+    except ImportError: pass
+        
+    steps.append(('compressor', sd.ScaleDownCompressor(target_model="gpt-4o")))
+
+    pipeline = sd.Pipeline(steps)
+    print(f"Configuration: {[s[0] for s in steps]}")
+
+    result = pipeline.run(
         context=TEST_CODE,
-        query=query_str,
-        file_path=file_path_arg, 
-        prompt=prompt_str
+        query="logic for processing",
+        file_path=file_path_arg,
+        prompt="Explain logic"
     )
     
-    print(" API call successful!")
-
-    # 3. Step-by-Step Verification
-    print("\n3. Pipeline Flow Verification:")
-    print("=" * 60)
+    print("Pipeline finished successfully")
     
-    # --- STEP 0: ORIGINAL INPUT ---
-    print(f"[INPUT] Context (Start of Pipeline):")
-    print("-" * 20)
-    print(f"{TEST_CODE.strip()[:200]}... [Total chars: {len(TEST_CODE)}]")
-    print(f"Query: '{query_str}'")
-    print(f"File Path: {file_path_arg}")
-    print("=" * 60)
+    print("\n--- Trace ---")
+    for i, step in enumerate(result.history):
+        print(f"\nStep {i+1}: {step.step_name}")
+        print(f"  Latency: {step.latency_ms:.0f}ms")
+        print(f"  Tokens:  {step.input_tokens} -> {step.output_tokens}")
+        
 
-    print("\n[STEP 1] Optimizer (HASTE) Output / Compressor Input:")
-    print("-" * 20)
-    
-    # We can perform a manual check to see what HASTE does
-    opt_result = optimizer.optimize(context=TEST_CODE, query=query_str, file_path=file_path_arg)
-    optimized_code = opt_result.content
-    
-    print(f"{optimized_code.strip()[:300]}")
-    if len(optimized_code) > 300: print("... (truncated)")
-    print("-" * 20)
-    print(f"Tokens (HASTE est.): {opt_result.metrics.optimized_tokens}")
-    print("=" * 60)
-
-    # --- STEP 2: COMPRESSOR OUTPUT ---
-    print(f"\n[STEP 2] Compressor Output (Final Result):")
-    print("-" * 20)
-    print(f"{result.final_content}")
-    print("-" * 20)
-    
-    # Get metrics from history
-    haste_step = result.history[0]
-    comp_step = result.history[1]
-    
-    print(f"Prompt used: '{prompt_str}'")
-    print(f"Compressor Input Tokens (API est.):  {comp_step.input_tokens}")
-    print(f"Compressor Output Tokens (API est.): {comp_step.output_tokens}")
-    print("=" * 60)
-
-    # 4. Summary Metrics
-    print("\n4. Summary Metrics:")
-    print("-" * 30)
-    print(f"Original Context Size:  {len(TEST_CODE)} chars")
-    print(f"Final Content Size:     {len(result.final_content)} chars")
-    print(f"Total Savings:          {result.savings_percent:.1f}%")
-    print(f"Total Latency:          {haste_step.latency_ms + comp_step.latency_ms:.0f}ms")
-    print("-" * 30)
-
-    print("\nREAL API TEST PASSED!")
-
-except AuthenticationError:
-    print("\nAUTHENTICATION FAILED: Invalid API Key.")
-    print("   Please check your SCALEDOWN_API_KEY environment variable.")
-
-except APIError as e:
-    print(f"\n API ERROR: {str(e)}")
-    print("   The server might be down or unreachable.")
+    print_header("Summary")
+    print(f"Original size: {len(TEST_CODE)} chars")
+    print(f"Final size:    {len(result.final_content)} chars")
+    print(f"Savings:       {result.savings_percent:.1f}%")
 
 except Exception as e:
-    print(f"\nUNEXPECTED ERROR: {str(e)}")
-    import traceback
-    traceback.print_exc()
+    print(f"\nError: {e}")
 
 finally:
-    if temp_file and os.path.exists(temp_file):
-        os.unlink(temp_file)
+    if os.path.exists(file_path_arg):
+        os.unlink(file_path_arg)

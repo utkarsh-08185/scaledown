@@ -16,6 +16,7 @@ except ImportError:
 from .base import BaseOptimizer
 from ..exceptions import OptimizerError
 from ..types import OptimizedContext, OptimizerMetrics
+from ..types.metrics import count_tokens
 
 
 class HasteOptimizer(BaseOptimizer):
@@ -55,9 +56,10 @@ class HasteOptimizer(BaseOptimizer):
         sem_model: str = 'text-embedding-3-small',
         hard_cap: int = 1200,
         soft_cap: int = 1800,
+        target_model: str = "gpt-4o",
         **kwargs
     ):
-        super().__init__(**kwargs)
+        super().__init__(target_model=target_model, **kwargs)
         
         if not HASTE_AVAILABLE:
             raise ImportError(
@@ -158,11 +160,11 @@ class HasteOptimizer(BaseOptimizer):
             # Estimate original tokens
             original_tokens = 0
             if file_path and os.path.exists(file_path):
-                 with open(file_path, 'r', encoding='utf-8') as f:
+                with open(file_path, 'r', encoding='utf-8') as f:
                     original_code = f.read()
-                    original_tokens = len(original_code.split())
+                original_tokens = count_tokens(original_code, model=self.target_model)
             
-            optimized_tokens = len(optimized_content.split())
+            optimized_tokens = count_tokens(optimized_content, model=self.target_model)
             
             metrics = OptimizerMetrics(
                 original_tokens=original_tokens,

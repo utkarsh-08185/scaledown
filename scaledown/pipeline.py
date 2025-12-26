@@ -3,6 +3,7 @@ from scaledown.optimizer.base import BaseOptimizer
 from scaledown.compressor.base import BaseCompressor
 from scaledown.types import OptimizedContext, CompressedPrompt
 from scaledown.types import PipelineResult, StepMetadata
+from scaledown.types.metrics import count_tokens
 
 class Pipeline:
     """
@@ -85,8 +86,8 @@ class Pipeline:
             # UNKNOWN
             else:
                 output = component(current_context, **kwargs)
-                inp = len(current_context) // 4
-                out = len(output) // 4
+                inp = count_tokens(current_context)
+                out = count_tokens(output)
                 current_context = output
             
             history.append(StepMetadata(

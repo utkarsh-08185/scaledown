@@ -1,4 +1,3 @@
-
 import os
 from typing import Optional
 
@@ -7,19 +6,20 @@ from scaledown.config import set_api_key, get_api_key
 
 # Core Components
 from scaledown.pipeline import Pipeline, make_pipeline
-from scaledown.optimizer.haste import HasteOptimizer
+# HasteOptimizer is optional, import from scaledown.optimizer if needed
 from scaledown.compressor.scaledown_compressor import ScaleDownCompressor
 
 # Types & Exceptions
 from scaledown.types import (
-    CompressedPrompt, 
-    OptimizedContext, 
-    PipelineResult, 
+    CompressedPrompt,
+    OptimizedContext,
+    PipelineResult,
     StepMetadata
 )
+
 from scaledown.exceptions import (
-    ScaleDownError, 
-    AuthenticationError, 
+    ScaleDownError,
+    AuthenticationError,
     APIError
 )
 
@@ -29,7 +29,6 @@ _API_KEY: Optional[str] = os.environ.get("SCALEDOWN_API_KEY")
 __all__ = [
     "Pipeline",
     "make_pipeline",
-    "HasteOptimizer",
     "ScaleDownCompressor",
     "set_api_key",
     "get_api_key",
@@ -41,4 +40,3 @@ __all__ = [
     "AuthenticationError",
     "APIError"
 ]
-
