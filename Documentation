@@ -1,0 +1,361 @@
+# Data Analysis Agent – Project Documentation
+
+## 1. Project Overview
+
+**Data Analysis Agent** is an AI-powered platform that automates the data science workflow. It performs end-to-end exploratory data analysis (EDA), generates insights, detects anomalies, recommends features, and builds machine learning models automatically.
+
+The system reduces manual effort for data scientists and analysts by converting raw datasets into actionable insights within minutes.
+
+### Problem Statement
+
+Traditional data analysis involves:
+
+* Manual data cleaning and exploration
+* Time-consuming visualization and profiling
+* Trial-and-error model selection
+
+This project automates these tasks to:
+
+* Reduce analysis time from hours to minutes
+* Improve productivity
+* Provide quick decision support
+
+---
+
+## 2. Objectives
+
+* Automate Exploratory Data Analysis (EDA)
+* Support multiple data formats (CSV, SQL, Parquet)
+* Generate dataset profiling and statistics
+* Detect anomalies automatically
+* Suggest feature engineering techniques
+* Recommend and train machine learning models (AutoML)
+* Generate visualizations and reports
+* Compress metadata using ScaleDown technique
+* Provide REST API for integration
+
+---
+
+## 3. Key Features
+
+### 3.1 Data Ingestion
+
+Supports:
+
+* CSV files
+* Parquet files
+* SQL databases (extensible)
+
+### 3.2 Automated EDA
+
+* Summary statistics
+* Correlation matrix
+* Distribution analysis
+* Missing value detection
+
+### 3.3 Data Profiling
+
+* Column types
+* Null percentage
+* Unique values
+* Dataset dimensions
+
+### 3.4 ScaleDown Metadata Compression
+
+Reduces metadata size by:
+
+* Storing ratios instead of raw counts
+* Keeping essential statistics only
+  **Benefit:** ~75% reduction in metadata size
+
+### 3.5 Anomaly Detection
+
+Uses:
+
+* Isolation Forest
+  Detects outliers in numerical data automatically.
+
+### 3.6 Feature Engineering Suggestions
+
+Provides recommendations such as:
+
+* Encoding categorical variables
+* Binning high-cardinality columns
+* Handling missing values
+
+### 3.7 AutoML Pipeline
+
+* Automatically detects target column
+* Compares multiple models
+* Returns best-performing model
+
+### 3.8 Insight Generator
+
+Example insights:
+
+* Dataset contains missing values
+* High correlation between features
+* Small dataset warning
+
+### 3.9 Visualization Engine
+
+Generates:
+
+* Histograms
+* Correlation heatmaps
+* Distribution plots
+
+### 3.10 Report Generation
+
+Creates HTML reports including:
+
+* Dataset summary
+* Insights
+* Model recommendations
+
+---
+
+## 4. System Architecture
+
+```
+User → FastAPI → Data Loader → Profiling → EDA
+                                   ↓
+                            ScaleDown Engine
+                                   ↓
+         Anomaly Detection → Feature Suggestions → AutoML
+                                   ↓
+                           Insight Generator
+                                   ↓
+                            Report Generator
+```
+
+---
+
+## 5. Technology Stack
+
+| Layer            | Technology            |
+| ---------------- | --------------------- |
+| Backend          | Python                |
+| API              | FastAPI               |
+| Data Processing  | Pandas, NumPy         |
+| Machine Learning | Scikit-learn, PyCaret |
+| Visualization    | Plotly, Seaborn       |
+| Reporting        | Jinja2                |
+| Database Support | SQLAlchemy            |
+| Deployment       | Docker                |
+
+---
+
+## 6. Project Structure
+
+```
+data-analysis-agent/
+│
+├── app/
+│   ├── api/              # API routes and schemas
+│   ├── core/             # EDA, AutoML, profiling modules
+│   ├── reports/          # Report generation
+│   ├── utils/            # Logging and helpers
+│   └── main.py           # FastAPI entry point
+│
+├── data/                 # Sample datasets
+├── tests/                # Unit tests
+├── notebooks/            # Experimentation
+├── requirements.txt
+├── Dockerfile
+└── README.md
+```
+
+---
+
+## 7. Workflow
+
+### Step 1: Upload Dataset
+
+User uploads dataset via API.
+
+### Step 2: Data Loading
+
+System reads file into DataFrame.
+
+### Step 3: Profiling & EDA
+
+* Shape
+* Missing values
+* Statistics
+* Correlation
+
+### Step 4: ScaleDown
+
+Compress metadata.
+
+### Step 5: Analysis Modules
+
+* Anomaly detection
+* Feature suggestions
+* Insight generation
+
+### Step 6: AutoML
+
+* Model comparison
+* Best model selection
+
+### Step 7: Report Generation
+
+HTML report created.
+
+---
+
+## 8. API Documentation
+
+### Endpoint
+
+**POST** `/api/analyze`
+
+#### Request
+
+Upload dataset file.
+
+#### Response
+
+```json
+{
+  "eda": {...},
+  "insights": [...],
+  "automl": "Best Model Info"
+}
+```
+
+---
+
+## 9. Installation & Setup
+
+### 9.1 Clone Repository
+
+```bash
+git clone https://github.com/yourusername/data-analysis-agent.git
+cd data-analysis-agent
+```
+
+### 9.2 Install Dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 9.3 Run Application
+
+```bash
+uvicorn app.main:app --reload
+```
+
+Access:
+
+```
+http://127.0.0.1:8000/docs
+```
+
+---
+
+## 10. Docker Deployment
+
+### Build Image
+
+```bash
+docker build -t data-agent .
+```
+
+### Run Container
+
+```bash
+docker run -p 8000:8000 data-agent
+```
+
+---
+
+## 11. Testing
+
+Run tests:
+
+```bash
+pytest
+```
+
+---
+
+## 12. Use Cases
+
+* Data analysts for quick EDA
+* Startups for rapid model building
+* Students for learning data science workflows
+* Enterprises for automated data profiling
+
+---
+
+## 13. Performance Benefits
+
+| Task            | Manual     | With Agent  |
+| --------------- | ---------- | ----------- |
+| EDA             | 1–2 hours  | < 2 minutes |
+| Model selection | 30–60 mins | Automated   |
+| Metadata size   | 100%       | ~25%        |
+
+---
+
+## 14. Future Enhancements
+
+* LLM-based insight generation (GPT)
+* Multi-table relationship analysis
+* Streamlit/React dashboard
+* Scheduled data monitoring
+* Model deployment pipeline
+* Data drift detection
+* Role-based access
+
+---
+
+## 15. Limitations
+
+* Works best with structured data
+* AutoML assumes last column as target (configurable)
+* Large datasets may require distributed processing
+
+---
+
+## 16. Evaluation Metrics
+
+Project success measured by:
+
+* Analysis time reduction
+* Insight relevance
+* Model accuracy
+* Metadata compression ratio
+
+---
+
+## 17. Contribution Guidelines
+
+1. Fork repository
+2. Create feature branch
+3. Commit changes
+4. Create pull request
+
+---
+
+## 18. License
+
+MIT License
+
+---
+
+## 19. Author
+
+Utkarsh Khandelwal
+Data Science & AI Enthusiast
+
+---
+
+## 20. Conclusion
+
+The Data Analysis Agent simplifies the entire data science workflow by automating exploration, insight generation, and model building. It enhances productivity and enables faster decision-making, making it valuable for both beginners and professionals.
+
