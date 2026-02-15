@@ -481,6 +481,13 @@ summaries = compressor.compress(
 4. **Chain optimizers**: Use multiple optimization stages in pipeline for maximum reduction
 5. **Set appropriate token caps**: Adjust `hard_cap` and `top_k` based on your LLM's context window
 
+
+## Community
+
+- Contribution guide: [CONTRIBUTING.md](CONTRIBUTING.md)
+- Code of Conduct: [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)
+- Security policy: [SECURITY.md](SECURITY.md)
+
 ---
 
 ## License
